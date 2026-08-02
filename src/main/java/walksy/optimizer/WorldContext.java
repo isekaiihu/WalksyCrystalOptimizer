@@ -1,38 +1,39 @@
 package walksy.optimizer;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
 import java.util.List;
 
 public class WorldContext {
 
-    public static boolean isObsidianOrBedrock(World world, BlockPos pos) {
-        return world.getBlockState(pos).isOf(Blocks.OBSIDIAN) || world.getBlockState(pos).isOf(Blocks.BEDROCK);
+    public static boolean isObsidianOrBedrock(Level world, BlockPos pos) {
+        Block block = world.getBlockState(pos).getBlock();
+        return block == Blocks.OBSIDIAN || block == Blocks.BEDROCK;
     }
 
-    public static boolean canPlaceCrystal(World world, BlockPos block) {
+    public static boolean canPlaceCrystal(Level world, BlockPos block) {
         if (!isObsidianOrBedrock(world, block)) {
             return false;
         }
-        BlockPos up = block.up();
-        if (!world.isAir(up)) {
+        BlockPos up = block.above();
+        if (!world.isEmptyBlock(up)) {
             return false;
         }
-        Box box = new Box(up.getX(), up.getY(), up.getZ(), up.getX() + 1.0, up.getY() + 2.0, up.getZ() + 1.0);
-        List<Entity> entities = world.getOtherEntities(null, box);
+        AABB box = new AABB(up.getX(), up.getY(), up.getZ(), up.getX() + 1.0, up.getY() + 2.0, up.getZ() + 1.0);
+        List<Entity> entities = world.getEntities((Entity) null, box, entity -> true);
         return entities.isEmpty();
     }
 
-    public static boolean isBlock(World world, BlockPos pos, Block... blocks) {
+    public static boolean isBlock(Level world, BlockPos pos, Block... blocks) {
         BlockState state = world.getBlockState(pos);
         for (Block block : blocks) {
-            if (state.isOf(block)) {
+            if (state.getBlock() == block) {
                 return true;
             }
         }

@@ -1,33 +1,38 @@
 package walksy.optimizer;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.decoration.EndCrystalEntity;
-import net.minecraft.entity.mob.MagmaCubeEntity;
-import net.minecraft.entity.mob.SlimeEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+//? if <26.2 {
+/*import net.minecraft.world.entity.monster.MagmaCube;
+import net.minecraft.world.entity.monster.Slime;
+*///?} else {
+import net.minecraft.world.entity.monster.cubemob.MagmaCube;
+import net.minecraft.world.entity.monster.cubemob.Slime;
+//?}
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 
 public class Optimizer {
-    private final MinecraftClient client = MinecraftClient.getInstance();
+    private final Minecraft client = Minecraft.getInstance();
     private int hitCount = 0;
     private int breakingBlockTick = 0;
 
     public void tick() {
-        if (this.client.player == null || this.client.world == null) {
+        if (this.client.player == null || this.client.level == null) {
             return;
         }
         this.handleBlockBreakingState();
         if (this.breakingBlockTick > 2) {
             return;
         }
-        if (!client.options.useKey.isPressed()) {
+        if (!client.options.keyUse.isDown()) {
             this.hitCount = 0;
         }
         if (this.hitCount >= this.getPacketLimit()) {
@@ -38,7 +43,7 @@ public class Optimizer {
     }
 
     private void handleBlockBreakingState() {
-        if (this.client.options.attackKey.isPressed()) {
+        if (this.client.options.keyAttack.isDown()) {
             this.breakingBlockTick++;
         } else {
             this.breakingBlockTick = 0;
@@ -46,11 +51,11 @@ public class Optimizer {
     }
 
     private void processEntityRemoval() {
-        if (!this.client.options.attackKey.isPressed()) {
+        if (!this.client.options.keyAttack.isDown()) {
             return;
         }
 
-        Entity target = this.getValidTarget(this.client.crosshairTarget);
+        Entity target = this.getValidTarget(this.client.hitResult);
         if (target != null) {
             if (this.hitCount >= 1) {
                 target.setRemoved(Entity.RemovalReason.KILLED);
@@ -60,10 +65,10 @@ public class Optimizer {
     }
 
     private void processCrystalPlacement() {
-        if (!this.client.options.useKey.isPressed()) {
+        if (!this.client.options.keyUse.isDown()) {
             return;
         }
-        if (!this.client.player.getMainHandStack().isOf(Items.END_CRYSTAL)) {
+        if (this.client.player.getMainHandItem().getItem() != Items.END_CRYSTAL) {
             return;
         }
         BlockHitResult hit = Raycast.cast(client, 4.5);
@@ -71,11 +76,11 @@ public class Optimizer {
             return;
         }
         BlockPos pos = hit.getBlockPos();
-        if (WorldContext.isObsidianOrBedrock(this.client.world, pos)) {
-            this.client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
+        if (WorldContext.isObsidianOrBedrock(this.client.level, pos)) {
+            this.client.gameMode.useItemOn(client.player, InteractionHand.MAIN_HAND, hit);
 
-            if (WorldContext.canPlaceCrystal(client.world, pos)) {
-                this.client.player.swingHand(Hand.MAIN_HAND);
+            if (WorldContext.canPlaceCrystal(client.level, pos)) {
+                this.client.player.swing(InteractionHand.MAIN_HAND);
             }
         }
     }
@@ -83,7 +88,7 @@ public class Optimizer {
     private Entity getValidTarget(HitResult hitResult) {
         if (hitResult instanceof EntityHitResult entityHit) {
             Entity e = entityHit.getEntity();
-            if (e instanceof EndCrystalEntity || e instanceof SlimeEntity || e instanceof MagmaCubeEntity) {
+            if (e instanceof EndCrystal || e instanceof Slime || e instanceof MagmaCube) {
                 return e;
             }
         }
@@ -91,7 +96,7 @@ public class Optimizer {
     }
 
     public boolean stopItemUse(ItemStack stack) {
-        if (!stack.isOf(Items.END_CRYSTAL)) {
+        if (stack.getItem() != Items.END_CRYSTAL) {
             return false;
         }
         return this.hitCount < this.getPacketLimit();
@@ -105,10 +110,10 @@ public class Optimizer {
 
     //probably taken from meteor
     private int getPing() {
-        if (client.getNetworkHandler() == null || this.client.player == null) {
+        if (client.getConnection() == null || this.client.player == null) {
             return 0;
         }
-        PlayerListEntry entry = client.getNetworkHandler().getPlayerListEntry(client.player.getUuid());
+        PlayerInfo entry = client.getConnection().getPlayerInfo(client.player.getUUID());
         return entry != null ? entry.getLatency() : 0;
     }
 }

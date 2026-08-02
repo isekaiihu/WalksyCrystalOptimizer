@@ -1,12 +1,12 @@
 {
   "required": true,
   "package": "walksy.optimizer.mixin",
-  "compatibilityLevel": "JAVA_8",
+  "compatibilityLevel": "${java}",
   "client": [
-    "ClientPlayerEntityMixin",
+    "LocalPlayerMixin",
     "EndCrystalItemMixin",
     "ItemStackMixin",
-    "MinecraftClientMixin"
+    "MinecraftMixin"
   ],
   "injectors": {
     "defaultRequire": 1
